@@ -1,30 +1,20 @@
 # KickSync
 
-Kick yayın durumunu Discord Rich Presence olarak gösteren,
-Windows için geliştirilmiş yerel bir uygulama.
+Kick yayın durumunu Discord Rich Presence ile senkronize eden ve izleme sağlayan web uygulaması.
 
 ## Özellikler
 
-- Kick canlı/offline durumunu kontrol eder.
-- Yayın başlığını gösterir.
-- Kategoriyi gösterir.
-- İzleyici sayısını gösterir.
-- Yayın başlangıç zamanını Discord'da gösterir.
-- "Yayını İzle" butonu sağlar.
-- Discord Desktop IPC kullanır.
-- Discord user token kullanmaz.
-- Self-bot kullanmaz.
-- Kullanıcı şifresi veya cookie saklamaz.
+- Kick canlı / offline durumunu anlık olarak kontrol eder.
+- Yayın başlığı, kategori ve izleyici sayısını görüntüler.
+- Canlı yayın süresini (uptime) dinamik sayaçla gösterir.
+- Discord Rich Presence durum ve aktivite kartı önizlemesi sunar.
+- Doğrudan "Yayını Aç" (Kick stream) yönlendirmesi sağlar.
+- Ayarlar paneli (Kick URL, Discord Application ID, polling interval, dil ve tema seçenekleri).
+- Canlı durum simülasyonu ve hızlı streamer şablonları.
 
-## Gereksinimler
+## Başlangıç
 
-- Windows
-- Python 3.11 veya üzeri
-- Discord Desktop
-
-## Kurulum
-
-Projeyi klonladıktan veya indirdikten sonra:
-
-```powershell
-cd KickSync
+```bash
+npm install
+npm run dev
+```

@@ -1,0 +1,8 @@
+{
+  "name": "KickSync",
+  "description": "Kick livestream status and Discord Rich Presence synchronization dashboard",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
