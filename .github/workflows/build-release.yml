@@ -30,11 +30,15 @@ jobs:
           npm install
           npm install -D electron electron-builder
 
+      - name: Configure package.json for Electron
+        run: |
+          node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); pkg.main = 'electron/main.cjs'; pkg.build = { appId: 'com.kicksync.app', productName: 'KickSync', directories: { output: 'dist-electron' }, files: ['electron/**/*', 'dist-ui/**/*'], win: { target: [{ target: 'portable', arch: ['x64'] }] } }; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+
       - name: Build React UI
         run: npx vite build --outDir dist-ui
 
       - name: Package Portable Windows EXE
-        run: npx electron-builder --win portable --x64
+        run: npx electron-builder --win portable --x64 --publish never
 
       - name: Create Automatic GitHub Release
         uses: softprops/action-gh-release@v2
@@ -47,7 +51,7 @@ jobs:
             OBS üzerinden Kick'te canlı yayına geçtiğinizde Discord profilinizi otomatik olarak **"Yayında (Streaming Now)"** durumuna getiren bağımsız modern Windows masaüstü uygulaması.
             
             ### 📥 İndirme ve Kullanım:
-            Aşağıdaki **Assets** bölümünden `KickSync 1.0.0.exe` (veya `KickSync.exe`) dosyasını indirip çift tıklayarak doğrudan çalıştırabilirsiniz!
+            Aşağıdaki **Assets** bölümünden `KickSync 1.0.0.exe` dosyasını indirip çift tıklayarak doğrudan çalıştırabilirsiniz!
           files: dist-electron/KickSync*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
