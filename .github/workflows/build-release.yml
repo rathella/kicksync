@@ -20,32 +20,29 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
+          node-version: 22
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller customtkinter pillow requests
+        run: npm install
 
-      - name: Build KickSync.exe
-        run: |
-          pyinstaller --noconsole --onefile --name "KickSync" app/main.py
+      - name: Build Modern KickSync.exe (React + Electron)
+        run: npm run build:exe
 
       - name: Create Automatic GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0
-          name: "KickSync v1.0.0 - Windows Release"
+          tag_name: v1.1.0
+          name: "KickSync v1.1.0 - Modern UI Windows Release"
           body: |
-            ## 🎮 KickSync v1.0.0 (Windows Portable)
+            ## 🎮 KickSync v1.1.0 (Modern UI Windows Portable)
             
-            OBS üzerinden Kick'te canlı yayına geçtiğinizde Discord profilinizi otomatik olarak **"Yayında (Streaming Now)"** durumuna getiren bağımsız Windows masaüstü uygulaması.
+            OBS üzerinden Kick'te canlı yayına geçtiğinizde Discord profilinizi otomatik olarak **"Yayında (Streaming Now)"** durumuna getiren bağımsız modern Windows masaüstü uygulaması.
             
             ### 📥 İndirme ve Kullanım:
-            Aşağıdaki **Assets** bölümünden `KickSync.exe` dosyasını indirip çift tıklayarak doğrudan çalıştırabilirsiniz!
-          files: dist/KickSync.exe
+            Aşağıdaki **Assets** bölümünden `KickSync 1.0.0.exe` (veya `KickSync.exe`) dosyasını indirip çift tıklayarak doğrudan çalıştırabilirsiniz!
+          files: dist-electron/KickSync*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
