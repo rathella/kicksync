@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { RefreshCw, Settings, ExternalLink, Play, Radio, Wifi, Info } from 'lucide-react';
+import { RefreshCw, Settings, ExternalLink, Play, Radio, Wifi, Info, MonitorDown } from 'lucide-react';
 import { StatusBadge } from './components/StatusBadge';
 import { StreamCard } from './components/StreamCard';
 import { DiscordCard } from './components/DiscordCard';
 import { SettingsModal } from './components/SettingsModal';
 import { DiscordPreviewModal } from './components/DiscordPreviewModal';
+import { ExeGuideModal } from './components/ExeGuideModal';
 import { AppConfig, KickStreamData } from './types';
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -37,6 +38,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isDiscordPreviewOpen, setIsDiscordPreviewOpen] = useState(false);
   const [isSimulatedLive, setIsSimulatedLive] = useState(false);
+  const [isExeGuideOpen, setIsExeGuideOpen] = useState(false);
 
   const pollTimerRef = useRef<any>(null);
 
@@ -252,6 +254,20 @@ export default function App() {
           </button>
         </div>
 
+        {/* Windows .EXE Helper Button */}
+        <div className="px-6 pt-2">
+          <button
+            id="open-exe-guide-button"
+            type="button"
+            onClick={() => setIsExeGuideOpen(true)}
+            className="w-full h-8 rounded-[8px] bg-[#1a2517] hover:bg-[#202e1c] border border-[#53FC18]/30 text-[#53FC18] text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors"
+          >
+            <MonitorDown className="w-3.5 h-3.5" />
+            <span>{isTr ? 'Windows .EXE Çalıştırma / Derleme Rehberi' : 'Windows .EXE Build & Run Guide'}</span>
+            <span className="text-[9px] bg-[#53FC18] text-black px-1.5 py-0.5 rounded font-black leading-none">.BAT</span>
+          </button>
+        </div>
+
         {/* Last Update indicator */}
         <div className="text-center py-2">
           <span id="last-update-label" className="text-[10px] text-[#5F5F67]">
@@ -308,6 +324,13 @@ export default function App() {
         stream={stream}
         config={config}
         elapsedTime={elapsedTime}
+      />
+
+      {/* EXE Guide Modal */}
+      <ExeGuideModal
+        isOpen={isExeGuideOpen}
+        onClose={() => setIsExeGuideOpen(false)}
+        language={config.language}
       />
     </div>
   );
