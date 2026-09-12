@@ -17,25 +17,22 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Check out code
+      - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          node-version: 22
+          python-version: '3.11'
 
       - name: Install dependencies
-        run: npm install
-
-      - name: Build Portable Windows EXE
-        run: npm run build:exe
-
-      - name: Rename executable
         run: |
-          if (Test-Path "dist-electron/KickSync 1.0.0.exe") {
-            Move-Item "dist-electron/KickSync 1.0.0.exe" "dist-electron/KickSync.exe" -Force
-          }
+          python -m pip install --upgrade pip
+          pip install pyinstaller customtkinter pillow requests
+
+      - name: Build KickSync.exe
+        run: |
+          pyinstaller --noconsole --onefile --name "KickSync" app/main.py
 
       - name: Create Automatic GitHub Release
         uses: softprops/action-gh-release@v2
@@ -47,8 +44,8 @@ jobs:
             
             OBS üzerinden Kick'te canlı yayına geçtiğinizde Discord profilinizi otomatik olarak **"Yayında (Streaming Now)"** durumuna getiren bağımsız Windows masaüstü uygulaması.
             
-            ### 📥 İndirme:
+            ### 📥 İndirme ve Kullanım:
             Aşağıdaki **Assets** bölümünden `KickSync.exe` dosyasını indirip çift tıklayarak doğrudan çalıştırabilirsiniz!
-          files: dist-electron/KickSync.exe
+          files: dist/KickSync.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
