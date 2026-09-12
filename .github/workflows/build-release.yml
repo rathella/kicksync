@@ -30,6 +30,19 @@ jobs:
           npm install
           npm install -D electron electron-builder
 
+      - name: Create App Icon and Assets
+        run: |
+          New-Item -ItemType Directory -Force -Path build
+          New-Item -ItemType Directory -Force -Path public
+          @'
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+            <rect width="256" height="256" rx="56" fill="#141416"/>
+            <rect x="12" y="12" width="232" height="232" rx="46" fill="none" stroke="#53FC18" stroke-width="6" stroke-opacity="0.4"/>
+            <path d="M64 48 H96 V112 H144 V48 H176 V208 H144 V144 H96 V208 H64 Z" fill="#53FC18"/>
+            <circle cx="196" cy="72" r="14" fill="#53FC18"/>
+          </svg>
+          '@ | Set-Content -Path public/icon.svg -Encoding UTF8
+
       - name: Create Electron Main File
         run: |
           New-Item -ItemType Directory -Force -Path electron
@@ -85,6 +98,7 @@ jobs:
               resizable: false,
               title: "KickSync",
               backgroundColor: "#18181B",
+              icon: path.join(__dirname, '../public/icon.png'),
               webPreferences: {
                 nodeIntegration: true,
                 contextIsolation: false,
@@ -117,23 +131,25 @@ jobs:
 
       - name: Configure package.json for Electron
         run: |
-          node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); pkg.main = 'electron/main.cjs'; pkg.build = { appId: 'com.kicksync.app', productName: 'KickSync', directories: { output: 'dist-electron' }, files: ['electron/**/*', 'dist-ui/**/*'], win: { target: [{ target: 'portable', arch: ['x64'] }] } }; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+          node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); pkg.main = 'electron/main.cjs'; pkg.build = { appId: 'com.kicksync.app', productName: 'KickSync', directories: { output: 'dist-electron' }, files: ['electron/**/*', 'dist-ui/**/*', 'public/**/*'], win: { icon: 'public/icon.ico', target: [{ target: 'portable', arch: ['x64'] }] } }; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
 
       - name: Build React UI with Relative Base
         run: npx vite build --base ./ --outDir dist-ui
 
-      - name: Package Portable Windows EXE
+      - name: Package Portable Windows EXE with Custom Icon
         run: npx electron-builder --win portable --x64 --publish never
 
       - name: Create Automatic GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.1.1
-          name: "KickSync v1.1.1 - Fixed UI Release"
+          tag_name: v1.2.0
+          name: "KickSync v1.2.0 - Clean & Fast Release"
           body: |
-            ## 🎮 KickSync v1.1.1 (Windows Portable)
+            ## 🎮 KickSync v1.2.0 (Windows Portable)
             
-            Arayüz varlık yükleme yolları düzeltildi, modern KickSync tasarımıyla eksiksiz açılır!
+            - ✨ Logolu bağımsız .exe
+            - 🧹 Temiz sadeleştirilmiş arayüz
+            - 🛠️ Ayarlar & Kick API bağlantısı düzeltildi
           files: dist-electron/KickSync*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
