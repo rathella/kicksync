@@ -37,7 +37,6 @@ jobs:
           const { app, BrowserWindow, shell, ipcMain } = require('electron');
           const path = require('path');
           const net = require('net');
-          const fs = require('fs');
 
           let mainWindow = null;
           let ipcSocket = null;
@@ -86,15 +85,18 @@ jobs:
               resizable: false,
               title: "KickSync",
               backgroundColor: "#18181B",
-              webPreferences: { nodeIntegration: true, contextIsolation: false }
+              webPreferences: {
+                nodeIntegration: true,
+                contextIsolation: false,
+                webSecurity: false
+              }
             });
             mainWindow.setMenuBarVisibility(false);
             mainWindow.webContents.setWindowOpenHandler(({ url }) => {
               shell.openExternal(url);
               return { action: 'deny' };
             });
-            const indexPath = path.join(__dirname, '../dist-ui/index.html');
-            mainWindow.loadFile(indexPath);
+            mainWindow.loadFile(path.join(__dirname, '../dist-ui/index.html'));
           }
 
           app.whenReady().then(() => {
@@ -117,8 +119,8 @@ jobs:
         run: |
           node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); pkg.main = 'electron/main.cjs'; pkg.build = { appId: 'com.kicksync.app', productName: 'KickSync', directories: { output: 'dist-electron' }, files: ['electron/**/*', 'dist-ui/**/*'], win: { target: [{ target: 'portable', arch: ['x64'] }] } }; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
 
-      - name: Build React UI
-        run: npx vite build --outDir dist-ui
+      - name: Build React UI with Relative Base
+        run: npx vite build --base ./ --outDir dist-ui
 
       - name: Package Portable Windows EXE
         run: npx electron-builder --win portable --x64 --publish never
@@ -126,15 +128,12 @@ jobs:
       - name: Create Automatic GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.1.0
-          name: "KickSync v1.1.0 - Modern UI Windows Release"
+          tag_name: v1.1.1
+          name: "KickSync v1.1.1 - Fixed UI Release"
           body: |
-            ## 🎮 KickSync v1.1.0 (Modern React UI Windows Portable)
+            ## 🎮 KickSync v1.1.1 (Windows Portable)
             
-            OBS üzerinden Kick'te canlı yayına geçtiğinizde Discord profilinizi otomatik olarak **"Yayında (Streaming Now)"** durumuna getiren bağımsız modern Windows masaüstü uygulaması.
-            
-            ### 📥 İndirme ve Kullanım:
-            Aşağıdaki **Assets** bölümünden `KickSync 1.0.0.exe` dosyasını indirip çift tıklayarak doğrudan çalıştırabilirsiniz!
+            Arayüz varlık yükleme yolları düzeltildi, modern KickSync tasarımıyla eksiksiz açılır!
           files: dist-electron/KickSync*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
