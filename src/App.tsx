@@ -13,6 +13,15 @@ const API_BASE = window.location.protocol === 'http:' || window.location.protoco
   ? ''
   : 'http://localhost:3000';
 
+function channelFromUrl(value: string): string {
+  try {
+    const parsed = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
+    return parsed.pathname.split('/').filter(Boolean)[0] || 'rathellaizm';
+  } catch {
+    return value.replace(/[^a-zA-Z0-9_-]/g, '') || 'rathellaizm';
+  }
+}
+
 const DEFAULT_CONFIG: AppConfig = {
   discord_client_id: "1547766245993226380",
   kick_url: "https://kick.com/rathellaizm",
@@ -184,12 +193,22 @@ export default function App() {
       const savedConfig = data.config || newConfig;
       localStorage.setItem('kicksync-config', JSON.stringify(savedConfig));
       setConfig(savedConfig);
+      setStream((current) => ({
+        ...current,
+        username: channelFromUrl(savedConfig.kick_url),
+        url: savedConfig.kick_url,
+      }));
       fetchStreamData(savedConfig);
     } catch (error) {
       // The packaged desktop build has no HTTP API process; persist locally.
       if (error instanceof TypeError || (error instanceof Error && error.message === 'Failed to fetch')) {
         localStorage.setItem('kicksync-config', JSON.stringify(newConfig));
         setConfig(newConfig);
+        setStream((current) => ({
+          ...current,
+          username: channelFromUrl(newConfig.kick_url),
+          url: newConfig.kick_url,
+        }));
         return;
       }
       throw error;

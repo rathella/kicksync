@@ -18,11 +18,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [formData, setFormData] = useState<AppConfig>(config);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setFormData(config);
       setErrorMsg(null);
+      setSuccessMsg(null);
     }
   }, [isOpen, config]);
 
@@ -48,7 +50,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setIsSaving(true);
     try {
       await onSave({ ...formData, kick_url: normalizedKickUrl });
-      onClose();
+      setSuccessMsg(isTr ? 'Ayarlar kaydedildi.' : 'Settings saved.');
+      window.setTimeout(onClose, 700);
     } catch (err: any) {
       setErrorMsg(err?.message === 'Failed to fetch'
         ? 'KickSync sunucusuna ulaşılamadı. Sunucunun çalıştığından emin olun.'
@@ -94,6 +97,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {errorMsg && (
             <div className="p-2.5 rounded-lg bg-[#FF5C68]/10 border border-[#FF5C68]/30 text-[#FF5C68] text-xs font-semibold">
               {errorMsg}
+            </div>
+          )}
+          {successMsg && (
+            <div className="p-2.5 rounded-lg bg-[#53FC18]/10 border border-[#53FC18]/30 text-[#53FC18] text-xs font-semibold">
+              {successMsg}
             </div>
           )}
 
