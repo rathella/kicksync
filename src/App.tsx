@@ -93,7 +93,15 @@ export default function App() {
           setConfig(data);
         }
       })
-      .catch((err) => console.warn('Failed to load config:', err));
+      .catch((err) => {
+        console.warn('Failed to load config from server:', err);
+        try {
+          const saved = localStorage.getItem('kicksync-config');
+          if (saved) setConfig({ ...DEFAULT_CONFIG, ...JSON.parse(saved) });
+        } catch {
+          // Keep defaults when local storage is unavailable or corrupt.
+        }
+      });
   }, []);
 
   // Fetch Kick stream status
@@ -158,22 +166,34 @@ export default function App() {
 
   // Save config handler
   const handleSaveConfig = async (newConfig: AppConfig) => {
-    const res = await fetch(`${API_BASE}/api/config`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newConfig),
-    });
-    let data: any = null;
     try {
-      data = await res.json();
-    } catch {
-      data = null;
+      const res = await fetch(`${API_BASE}/api/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newConfig),
+      });
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
+      if (!res.ok) {
+        throw new Error(data?.error || (isTr ? 'Ayarlar kaydedilemedi.' : 'Failed to save settings.'));
+      }
+      const savedConfig = data.config || newConfig;
+      localStorage.setItem('kicksync-config', JSON.stringify(savedConfig));
+      setConfig(savedConfig);
+      fetchStreamData(savedConfig);
+    } catch (error) {
+      // The packaged desktop build has no HTTP API process; persist locally.
+      if (error instanceof TypeError || (error instanceof Error && error.message === 'Failed to fetch')) {
+        localStorage.setItem('kicksync-config', JSON.stringify(newConfig));
+        setConfig(newConfig);
+        return;
+      }
+      throw error;
     }
-    if (!res.ok) {
-      throw new Error(data?.error || (isTr ? 'Ayarlar kaydedilemedi.' : 'Failed to save settings.'));
-    }
-    setConfig(data.config || newConfig);
-    fetchStreamData(data.config || newConfig);
   };
 
   const isDark = config.theme === 'Dark';
