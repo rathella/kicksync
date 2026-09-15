@@ -140,6 +140,7 @@ jobs:
         run: npx electron-builder --win portable --x64 --publish never
 
       - name: Create Automatic GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
