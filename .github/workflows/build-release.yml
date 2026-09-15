@@ -1,0 +1,155 @@
+name: Build and Release Windows EXE
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          npm install
+          npm install -D electron electron-builder
+
+      - name: Create App Icon and Assets
+        run: |
+          New-Item -ItemType Directory -Force -Path build
+          New-Item -ItemType Directory -Force -Path public
+          @'
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+            <rect width="256" height="256" rx="56" fill="#141416"/>
+            <rect x="12" y="12" width="232" height="232" rx="46" fill="none" stroke="#53FC18" stroke-width="6" stroke-opacity="0.4"/>
+            <path d="M64 48 H96 V112 H144 V48 H176 V208 H144 V144 H96 V208 H64 Z" fill="#53FC18"/>
+            <circle cx="196" cy="72" r="14" fill="#53FC18"/>
+          </svg>
+          '@ | Set-Content -Path public/icon.svg -Encoding UTF8
+
+      - name: Create Electron Main File
+        run: |
+          New-Item -ItemType Directory -Force -Path electron
+          @'
+          const { app, BrowserWindow, shell, ipcMain } = require('electron');
+          const path = require('path');
+          const net = require('net');
+
+          let mainWindow = null;
+          let ipcSocket = null;
+          let isConnected = false;
+
+          function connectDiscord(clientId) {
+            if (isConnected && ipcSocket) return;
+            for (let i = 0; i < 10; i++) {
+              const pipePath = `\\\\.\\pipe\\discord-ipc-${i}`;
+              try {
+                const socket = net.createConnection(pipePath, () => {
+                  ipcSocket = socket;
+                  isConnected = true;
+                  const payload = JSON.stringify({ v: 1, client_id: clientId });
+                  const len = Buffer.byteLength(payload);
+                  const header = Buffer.alloc(8);
+                  header.writeUInt32LE(0, 0);
+                  header.writeUInt32LE(len, 4);
+                  socket.write(Buffer.concat([header, Buffer.from(payload)]));
+                });
+                socket.on('error', () => {});
+                socket.on('close', () => { isConnected = false; ipcSocket = null; });
+                if (isConnected) break;
+              } catch (err) {}
+            }
+          }
+
+          function sendActivity(activity) {
+            if (!ipcSocket || !isConnected) return;
+            const payload = JSON.stringify({
+              cmd: "SET_ACTIVITY",
+              args: { pid: process.pid, activity },
+              nonce: Math.random().toString(36).substring(2)
+            });
+            const len = Buffer.byteLength(payload);
+            const header = Buffer.alloc(8);
+            header.writeUInt32LE(1, 0);
+            header.writeUInt32LE(len, 4);
+            try { ipcSocket.write(Buffer.concat([header, Buffer.from(payload)])); } catch (e) {}
+          }
+
+          function createWindow() {
+            mainWindow = new BrowserWindow({
+              width: 500,
+              height: 720,
+              resizable: false,
+              title: "KickSync",
+              backgroundColor: "#18181B",
+              icon: path.join(__dirname, '../public/icon.png'),
+              webPreferences: {
+                nodeIntegration: true,
+                contextIsolation: false,
+                webSecurity: false
+              }
+            });
+            mainWindow.setMenuBarVisibility(false);
+            mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+              shell.openExternal(url);
+              return { action: 'deny' };
+            });
+            mainWindow.loadFile(path.join(__dirname, '../dist-ui/index.html'));
+          }
+
+          app.whenReady().then(() => {
+            createWindow();
+            connectDiscord("1547766245993226380");
+          });
+
+          app.on('window-all-closed', () => {
+            if (ipcSocket) { try { ipcSocket.end(); } catch (e) {} }
+            if (process.platform !== 'darwin') app.quit();
+          });
+
+          ipcMain.handle('update-discord-activity', (e, act) => {
+            sendActivity(act);
+            return true;
+          });
+          '@ | Set-Content -Path electron/main.cjs -Encoding UTF8
+
+      - name: Configure package.json for Electron
+        run: |
+          node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); pkg.main = 'electron/main.cjs'; pkg.build = { appId: 'com.kicksync.app', productName: 'KickSync', directories: { output: 'dist-electron' }, files: ['electron/**/*', 'dist-ui/**/*', 'public/**/*'], win: { icon: 'public/icon.ico', target: [{ target: 'portable', arch: ['x64'] }] } }; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+
+      - name: Build React UI with Relative Base
+        run: npx vite build --base ./ --outDir dist-ui
+
+      - name: Package Portable Windows EXE with Custom Icon
+        run: npx electron-builder --win portable --x64 --publish never
+
+      - name: Create Automatic GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "KickSync ${{ github.ref_name }} - Clean & Fast Release"
+          body: |
+            ## 🎮 KickSync v1.2.0 (Windows Portable)
+            
+            - ✨ Logolu bağımsız .exe
+            - 🧹 Temiz sadeleştirilmiş arayüz
+            - 🛠️ Ayarlar & Kick API bağlantısı düzeltildi
+          files: dist-electron/KickSync*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
