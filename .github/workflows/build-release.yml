@@ -54,30 +54,45 @@ jobs:
           let mainWindow = null;
           let ipcSocket = null;
           let isConnected = false;
+          let discordClientId = "1547766245993226380";
+          let pendingActivity;
 
           function connectDiscord(clientId) {
             if (isConnected && ipcSocket) return;
-            for (let i = 0; i < 10; i++) {
+            discordClientId = clientId;
+            const tryPipe = (i) => {
+              if (i >= 10 || (isConnected && ipcSocket)) return;
               const pipePath = `\\\\.\\pipe\\discord-ipc-${i}`;
-              try {
-                const socket = net.createConnection(pipePath, () => {
+              const socket = net.createConnection(pipePath);
+              socket.once('connect', () => {
                   ipcSocket = socket;
                   isConnected = true;
-                  const payload = JSON.stringify({ v: 1, client_id: clientId });
+                  const payload = JSON.stringify({ v: 1, client_id: discordClientId });
                   const len = Buffer.byteLength(payload);
                   const header = Buffer.alloc(8);
                   header.writeUInt32LE(0, 0);
                   header.writeUInt32LE(len, 4);
                   socket.write(Buffer.concat([header, Buffer.from(payload)]));
-                });
-                socket.on('error', () => {});
-                socket.on('close', () => { isConnected = false; ipcSocket = null; });
-                if (isConnected) break;
-              } catch (err) {}
-            }
+                  if (pendingActivity !== undefined) {
+                    const activity = pendingActivity;
+                    pendingActivity = undefined;
+                    writeActivity(activity);
+                  }
+              });
+              socket.once('error', () => {
+                if (!isConnected) {
+                  socket.destroy();
+                  tryPipe(i + 1);
+                }
+              });
+              socket.on('close', () => {
+                if (ipcSocket === socket) { isConnected = false; ipcSocket = null; }
+              });
+            };
+            tryPipe(0);
           }
 
-          function sendActivity(activity) {
+          function writeActivity(activity) {
             if (!ipcSocket || !isConnected) return;
             const payload = JSON.stringify({
               cmd: "SET_ACTIVITY",
@@ -89,6 +104,16 @@ jobs:
             header.writeUInt32LE(1, 0);
             header.writeUInt32LE(len, 4);
             try { ipcSocket.write(Buffer.concat([header, Buffer.from(payload)])); } catch (e) {}
+          }
+
+          function sendActivity(activity) {
+            pendingActivity = activity;
+            if (!ipcSocket || !isConnected) {
+              connectDiscord(discordClientId);
+              return;
+            }
+            pendingActivity = undefined;
+            writeActivity(activity);
           }
 
           function createWindow() {
@@ -123,8 +148,15 @@ jobs:
             if (process.platform !== 'darwin') app.quit();
           });
 
-          ipcMain.handle('update-discord-activity', (e, act) => {
-            sendActivity(act);
+          ipcMain.handle('update-discord-activity', (e, payload) => {
+            const clientId = payload?.clientId || discordClientId;
+            if (clientId !== discordClientId) {
+              if (ipcSocket) { try { ipcSocket.destroy(); } catch (err) {} }
+              ipcSocket = null;
+              isConnected = false;
+              discordClientId = clientId;
+            }
+            sendActivity(payload?.activity ?? null);
             return true;
           });
           '@ | Set-Content -Path electron/main.cjs -Encoding UTF8

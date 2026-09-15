@@ -59,6 +59,34 @@ async function fetchKickDirect(kickUrl: string): Promise<KickStreamData> {
   };
 }
 
+function publishDiscordActivity(stream: KickStreamData, config: AppConfig) {
+  try {
+    const electronRequire = (window as any).require;
+    const ipcRenderer = electronRequire?.('electron')?.ipcRenderer;
+    if (!ipcRenderer) return;
+    const activity = stream.is_live
+      ? {
+          type: 0,
+          details: (stream.title || 'Canlı Yayın').slice(0, 128),
+          state: `${stream.category || 'Just Chatting'} • ${stream.viewers.toLocaleString()} izleyici`.slice(0, 128),
+          timestamps: stream.started_at
+            ? { start: Math.floor(new Date(stream.started_at).getTime() / 1000) }
+            : undefined,
+          assets: {
+            large_image: 'kick_logo',
+            large_text: stream.title || 'Kick Stream',
+            small_image: 'kick_verified',
+            small_text: `kick.com/${stream.username}`,
+          },
+          buttons: [{ label: 'Yayını İzle', url: stream.url || `https://kick.com/${stream.username}` }],
+        }
+      : null;
+    void ipcRenderer.invoke('update-discord-activity', { activity, clientId: config.discord_client_id });
+  } catch {
+    // Browser/dev mode does not expose Electron IPC.
+  }
+}
+
 const DEFAULT_CONFIG: AppConfig = {
   discord_client_id: "1547766245993226380",
   kick_url: "https://kick.com/rathellaizm",
@@ -129,6 +157,10 @@ export default function App() {
 
     return () => clearInterval(timer);
   }, [stream.is_live, stream.started_at, calculateElapsed]);
+
+  useEffect(() => {
+    publishDiscordActivity(stream, config);
+  }, [stream, config]);
 
   // Load config on mount
   useEffect(() => {
