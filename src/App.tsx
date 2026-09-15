@@ -405,6 +405,8 @@ export default function App() {
         <div className="px-6 pb-4">
           <DiscordCard
             connected={true}
+            isLive={stream.is_live}
+            streamUrl={stream.url || `https://kick.com/${stream.username}`}
             onOpenPreview={() => setIsDiscordPreviewOpen(true)}
             language={config.language}
           />
