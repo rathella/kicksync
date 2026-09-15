@@ -234,8 +234,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {isTr ? 'İptal' : 'Cancel'}
           </button>
           <button
-            type="submit"
+            type="button"
             disabled={isSaving}
+            onClick={handleSubmit}
             className="px-5 py-2 bg-[#53FC18] hover:bg-[#68FF35] text-black text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50"
           >
             <Save className="w-3.5 h-3.5" />
