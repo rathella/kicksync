@@ -22,6 +22,43 @@ function channelFromUrl(value: string): string {
   }
 }
 
+async function fetchKickDirect(kickUrl: string): Promise<KickStreamData> {
+  const username = channelFromUrl(kickUrl);
+  const response = await fetch(`https://kick.com/api/v2/channels/${encodeURIComponent(username)}`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (response.status === 404) {
+    return {
+      is_live: false,
+      username,
+      channel_found: false,
+      title: 'Kick kanalÄ± bulunamadÄ±.',
+      category: '',
+      viewers: 0,
+      started_at: null,
+      thumbnail_url: null,
+      url: `https://kick.com/${username}`,
+    };
+  }
+  if (!response.ok) throw new Error(`Kick API HTTP ${response.status}`);
+  const data = await response.json();
+  const live = data?.livestream;
+  const categories = Array.isArray(live?.categories) ? live.categories : [];
+  const thumbnail = live?.thumbnail;
+  return {
+    is_live: Boolean(live?.is_live),
+    username,
+    channel_found: true,
+    title: live?.is_live ? (live.session_title || 'CanlÄ± YayÄ±n') : 'YayÄ±n ÅŸu anda kapalÄ±.',
+    category: live?.is_live ? (categories[0]?.name || 'Just Chatting') : 'Kanal ÅŸu anda canlÄ± deÄŸil.',
+    viewers: Number(live?.viewer_count || 0),
+    started_at: live?.start_time || null,
+    thumbnail_url: typeof thumbnail === 'string' ? thumbnail : (thumbnail?.url || null),
+    profile_pic: data?.user?.profile_pic || null,
+    url: `https://kick.com/${username}`,
+  };
+}
+
 const DEFAULT_CONFIG: AppConfig = {
   discord_client_id: "1547766245993226380",
   kick_url: "https://kick.com/rathellaizm",
@@ -133,9 +170,15 @@ export default function App() {
           url: currentConfig.kick_url,
         });
       } else {
-        const res = await fetch(`${API_BASE}/api/kick/stream?url=${encodeURIComponent(currentConfig.kick_url)}`);
-        const data = await res.json();
-        setStream(data);
+        try {
+          const res = await fetch(`${API_BASE}/api/kick/stream?url=${encodeURIComponent(currentConfig.kick_url)}`);
+          if (!res.ok) throw new Error(`API HTTP ${res.status}`);
+          const data = await res.json();
+          setStream(data);
+        } catch {
+          // Packaged EXE has no local Express process, so query Kick directly.
+          setStream(await fetchKickDirect(currentConfig.kick_url));
+        }
       }
 
       const now = new Date();
